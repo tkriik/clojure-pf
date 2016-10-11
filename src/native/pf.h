@@ -9,11 +9,11 @@
  */
 int pf_open(const char *iface, int dlt, char *errbuf, int errbuf_len);
 
-/* Sets the read buffer length of a socket/device. */
-int pf_set_rbuf_len(int fd, int len);
+/* Sets the read buffer size of a socket/device. */
+int pf_set_read_buffer_size(int fd, int len);
 
 /*
- * Sets the filter program used by the socket/device.
+ * Sets the filter program to be used by the socket/device.
  * The actual BPF program is extracted from the raw integer array.
  */
 int pf_set_filter(int fd, const int *ins, int ins_len);
