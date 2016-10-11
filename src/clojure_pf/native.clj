@@ -7,9 +7,9 @@
   that is configured with the given interface, data link type
   and read buffer length."
   (let [fd (jna/invoke Integer
-                       clojure_pf_native/pf_open
+                       clojure_pf/pf_open
                        interface
-                       read-buffer-length
+                       read-length
                        data-link-type)]
     (when-not (= fd -1)
       fd)))
@@ -24,7 +24,7 @@
   Returns a data buffer on success."
   (let [data  (byte-array size)
         nr    (jna/invoke Integer
-                          clojure_pf_native/pf_read
+                          clojure_pf/pf_read
                           fd
                           data
                          (count data))]
@@ -35,7 +35,7 @@
   "Writes data to a socket/device.
   Returns the number of bytes written on success."
   (let [nw (jna/invoke Integer
-                       clojure_pf_native/pf_write
+                       clojure_pf/pf_write
                        data
                        (count data))]
     (when-not (= nw -1)
@@ -43,4 +43,4 @@
 
 (defn close [fd]
   "Closes a socket/device associated with the given file descriptor."
-  (jna/invoke Void clojure_pf_native/pf_close fd))
+  (jna/invoke Void clojure_pf/pf_close fd))
