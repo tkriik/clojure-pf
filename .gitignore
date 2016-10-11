@@ -1,10 +1,14 @@
 /target
 /classes
 /checkouts
+/resources
 pom.xml
 pom.xml.asc
 *.jar
 *.class
+*.so
+*.o
+*.gch
 /.lein-*
 /.nrepl-port
 .hgignore
