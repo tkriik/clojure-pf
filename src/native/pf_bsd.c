@@ -28,7 +28,7 @@ static const char *bpf_dev_paths[] = {
     NULL
 };
 
-int pf_open(const char *iface, int dlt, char *errbuf, int errbuf_len)
+int pf_open(const char *iface, int len, int dlt)
 {
 	int fd;
 	struct ifreq ifr;
@@ -42,6 +42,11 @@ int pf_open(const char *iface, int dlt, char *errbuf, int errbuf_len)
 	if (fd == -1) {
 		warn("open");
 		goto err_open;
+	}
+
+	if (ioctl(fd, BIOCSBLEN, &len) == -1) {
+		warn("BIOCSBLEN");
+		goto err_ioctl;
 	}
 
 	strlcpy(ifr.ifr_name, iface, sizeof(ifr.ifr_name));
@@ -62,16 +67,6 @@ err_ioctl:
 	(void)close(fd);
 err_open:
 	return -1;
-}
-
-int pf_set_read_buffer_size(int fd, int len)
-{
-	if (ioctl(fd, BIOCSBLEN, &len) == -1) {
-		warn("BIOCSBLEN");
-		return -1;
-	}
-
-	return 0;
 }
 
 int pf_set_filter(int fd, const int *ins, const int ins_len)

@@ -5,12 +5,10 @@
 
 /*
  * Returns a file descriptor pointing to a socket or BPF device
- * that is associated with the given interface and data link type.
+ * that is associated with the given interface, read buffer length
+ * and data link type.
  */
-int pf_open(const char *iface, int dlt, char *errbuf, int errbuf_len);
-
-/* Sets the read buffer size of a socket/device. */
-int pf_set_read_buffer_size(int fd, int len);
+int pf_open(const char *iface, int len, int dlt);
 
 /*
  * Sets the filter program to be used by the socket/device.
