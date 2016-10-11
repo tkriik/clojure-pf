@@ -6,7 +6,7 @@ SRC_BSD=	src/native/pf_bsd.c
 
 OBJ_BSD=	pf_bsd.o
 
-LIB=		libclojure_pf_native.so
+LIB=		libclojure_pf.so
 LIBDIR=		resources
 
 bsd: $(SRC_BSD)
