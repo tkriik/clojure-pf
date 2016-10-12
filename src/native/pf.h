@@ -5,10 +5,13 @@
 
 /*
  * Returns a file descriptor pointing to a socket or BPF device
- * that is associated with the given interface, read buffer length
- * and data link type.
+ * that is associated with the given interface. Additionally,
+ * the following options are provided:
+ *  - data link type
+ *  - header complete -flag
+ *  - immediate read -flag
  */
-int pf_open(const char *iface, int len, int dlt);
+int pf_open(const char *iface, int len, int dlt, int hdr_complete, int imm);
 
 /*
  * Sets the filter program to be used by the socket/device.

@@ -2,16 +2,18 @@
   "Wrapper functions to native packet filter routines."
   (:require [net.n01se.clojure-jna :as jna]))
 
-(defn open [interface read-length data-link-type]
+(defn open [interface read-length data-link-type header-complete immediate]
   "Returns a file descriptor pointing to a socket or BPF device
-  that is configured with the given interface, data link type
-  and read buffer length."
+  that is configured with the given interface, read buffer length,
+  data link type, header complete -flag and immediate read -flag."
   (let [fd (jna/invoke Integer
                        clojure_pf/pf_open
                        interface
                        read-length
-                       data-link-type)]
-    (when-not (= fd -1)
+                       data-link-type
+                       header-complete
+                       immediate)]
+    (if-not (= fd -1)
       fd)))
 
 (defn set-filter [fd instructions]
@@ -28,7 +30,7 @@
                           fd
                           data
                          (count data))]
-    (when-not (= nr -1)
+    (if-not (= nr -1)
       (take nr data))))
 
 (defn write [fd data]
@@ -38,7 +40,7 @@
                        clojure_pf/pf_write
                        data
                        (count data))]
-    (when-not (= nw -1)
+    (if-not (= nw -1)
       nw)))
 
 (defn close [fd]

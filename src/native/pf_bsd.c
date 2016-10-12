@@ -28,7 +28,7 @@ static const char *bpf_dev_paths[] = {
     NULL
 };
 
-int pf_open(const char *iface, int len, int dlt)
+int pf_open(const char *iface, int len, int dlt, int hdr_complete, int imm)
 {
 	int fd;
 	struct ifreq ifr;
@@ -56,8 +56,20 @@ int pf_open(const char *iface, int len, int dlt)
 		goto err_ioctl;
 	}
 
-	if (ioctl(fd, BIOCSDLT, &dlt) == -1) {
-		warn("BIOCSDLT");
+	if (dlt != 0) {
+		if (ioctl(fd, BIOCSDLT, &dlt) == -1) {
+			warn("BIOCSDLT");
+			goto err_ioctl;
+		}
+	}
+
+	if (ioctl(fd, BIOCSHDRCMPLT, &hdr_complete) == -1) {
+		warn("BIOCSHDRCMPLT");
+		goto err_ioctl;
+	}
+
+	if (ioctl(fd, BIOCIMMEDIATE, &imm) == -1) {
+		warn("BIOCIMMEDIATE");
 		goto err_ioctl;
 	}
 
