@@ -38,9 +38,4 @@ int pf_write(int fd, const void *buf, int len);
  */
 void pf_close(int fd);
 
-/*
- * Retrieves the BPF header length.
- */
-int pf_header_length(void);
-
 #endif

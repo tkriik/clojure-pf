@@ -127,8 +127,3 @@ void pf_close(int fd)
 	if (close(fd) == -1)
 		warn("close");
 }
-
-int pf_header_length(void)
-{
-	return SIZEOF_BPF_HDR;
-}
