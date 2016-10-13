@@ -35,7 +35,7 @@
                           data
                          (count data))]
     (if-not (= nr -1)
-      (byte-array (take nr data)))))
+      data)))
 
 (defn write [fd data]
   "Writes data to a socket/device.
