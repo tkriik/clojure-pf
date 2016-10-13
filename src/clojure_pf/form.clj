@@ -1,47 +1,52 @@
 (ns clojure-pf.form
-  "Module to retrieve useful information from user-define packet form")
+  "Module to retrieve useful information from user-defined packet form")
 
 ; Utilities
 
-(def ^:private ^:const entry->width 3)
+(def ^:private ^:const entry->size 3)
 
 (defn- entry->valid? [entry]
   "Tests whether a form entry is valid according to the following rules:
    * A form field must be a keyword.
-   * The type must be a keyword denoting a number or a buffer.
+   * The kind must be a keyword denoting a number or a buffer.
     - If it's a number, check if the size is either 1, 2, 4 or 8.
     - If it's a buffer, check if the size is above zero."
   (and (keyword? (:field entry))
-       (case (:type entry)
+       (case (:kind entry)
          :int (contains? #{1 2 4 8} (:size entry))
          :buf (pos? (:size entry)))))
 
-(defn- form->next-entry [form]
-  "Returns the next entry of a packet form along
-  with the rest of it in a pair."
-  (let [[field _type size] (take entry->width form)
-        entry {:field field :type _type :size size}]
-    (when (entry->valid? entry)
-      [entry (drop entry->width form)])))
+(defn- entry->parse [form]
+  "Parses an entry from a form."
+  (let [[field kind size] (take entry->size form)
+        entry {:field field
+               :kind kind
+               :size size}]
+    (if (entry->valid? entry)
+      entry)))
 
 ; Exports
 
-(defn entry-list [form]
-  "Returns a list containing the field, type, size and offset
-  of each entry in a packet form."
-  (loop [[entry form] (form->next-entry form)
-         entries      []
-         offset       0]
-    (if-not entry
-      entries
-      (let [next-entry  (form->next-entry form)
-            entry       (assoc entry :offset offset)
-            entries     (conj entries entry)
-            offset      (+ offset (:size entry))]
-        (recur next-entry entries offset)))))
+(defn to-entries [form]
+  "Returns a list of form entries, each containing the following information:
+   * field name
+   * value kind (type)
+   * value size
+   * value offset"
+  (loop [entries  []
+         form     form
+         offset   0]
+    (let [entry (entry->parse form)]
+      (if-not entry
+        entries
+        (let [entry   (assoc entry :offset offset)
+              entries (conj entries entry)
+              form    (drop entry->size form)
+              offset  (+ offset (:size entry))]
+          (recur entries form offset))))))
 
 (defn size [form]
-  "Returns the sum of all the sizes defined in the packet form."
-  (->> (entry-list form)
+  "Returns the total packet size defined by a form."
+  (->> (to-entries form)
        (map :size)
        (reduce +)))
