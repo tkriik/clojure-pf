@@ -24,7 +24,7 @@
 (defn read-raw [handle read-buffer-size maximum-packets]
   "Reads at most 'read-buffer-size' bytes from a socket/device handle,
   containing at most 'maximum-packets' headers and payloads.
-  Returns a RawPacket on success."
+  Returns a RawPacket record on success."
   (let [data            (byte-array read-buffer-size)
         header-indices  (int-array maximum-packets)
         header-sizes    (int-array maximum-packets)

@@ -66,6 +66,13 @@
               :bssid  :buf  6
               :seq    :buf  2])
 
+(def my-form [:fc     :be     :short
+              :dur    :be     :short
+              :dst            :byte   6
+              :src            :byte   6
+              :bssid          :byte   6
+              :seq    :be     :short  1])
+
 (def my-opts {:immediate true :data-link-type :ieee80211})
 
 (def my-ctx (create "iwn0" my-form my-opts))
