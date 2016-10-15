@@ -29,16 +29,20 @@
 (defn- deserialize-value [buffer entry]
   "Deserializes a value from a buffer according to a form entry."
   (try
-    (let [kind            (:kind entry)
-          size            (:size entry)
-          [buffer array]  (case kind
-                            :byte  [buffer (byte-array size)]
-                            :short [(.asShortBuffer buffer) (short-array size)]
-                            :int   [(.asIntBuffer buffer) (int-array size)]
-                            :long  [(.asLongBuffer buffer) (long-array size)])]
+    (let [kind          (:kind entry)
+          size          (:size entry)
+          [buffer
+           array-ctor]  (case kind
+                          :byte   [buffer                   byte-array]
+                          :char   [(.asCharBuffer buffer)   char-array]
+                          :short  [(.asShortBuffer buffer)  short-array]
+                          :int    [(.asIntBuffer buffer)    int-array]
+                          :long   [(.asLongBuffer buffer)   long-array]
+                          :float  [(.asFloatBuffer buffer)  float-array]
+                          :double [(.asDoubleBuffer buffer) double-array])]
       (if (= size 1)
         (.get buffer)
-        (do
+        (let [array (array-ctor size)]
           (.get buffer array)
           array)))))
 
