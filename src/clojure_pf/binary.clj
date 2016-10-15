@@ -21,7 +21,6 @@
         [buffer
          array-ctor]    (case kind
                           :byte   [buffer                   byte-array]
-                          :char   [(.asCharBuffer buffer)   char-array]
                           :short  [(.asShortBuffer buffer)  short-array]
                           :int    [(.asIntBuffer buffer)    int-array]
                           :long   [(.asLongBuffer buffer)   long-array]

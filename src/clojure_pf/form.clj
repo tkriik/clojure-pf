@@ -20,7 +20,7 @@
 
 (defn- kind->valid? [kind]
   "Tests whether a field kind is valid."
-  (contains? #{:byte :char :short :int :long :float :double} kind))
+  (contains? #{:byte :short :int :long :float :double} kind))
 
 (defn- size->valid? [size]
   "Tests whether a field size is valid."
