@@ -44,7 +44,7 @@
   (let [handle      (.handle context)
         entries     (.entries context)
         options     (.options context)
-        raw-packet  (io/read handle
+        raw-packet  (io/read-raw handle
                              (:read-buffer-size options)
                              (:maximum-packets options))]
     (if raw-packet

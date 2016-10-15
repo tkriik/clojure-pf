@@ -21,7 +21,7 @@
     (if-not (= handle -1)
       handle)))
 
-(defn read [handle read-buffer-size maximum-packets]
+(defn read-raw [handle read-buffer-size maximum-packets]
   "Reads at most 'read-buffer-size' bytes from a socket/device handle,
   containing at most 'maximum-packets' headers and payloads.
   Returns a RawPacket on success."
@@ -43,19 +43,19 @@
                                     payload-count)]
     (if-not (= read-count -1)
             ; BPF headers are only prepended to payloads on BSD-derived systems,
-            ; so header-bounds is optional.
-      (let [header-count    (first header-count)
-            header-bounds   (if (pos? header-count)
-                              (map ->RawPacketBoundary
-                                   (take header-count header-indices)
-                                   (take header-count header-sizes)))
-            payload-count   (first payload-count)
-            payload-bounds  (map ->RawPacketBoundary
-                                 (take payload-count payload-indices)
-                                 (take payload-count payload-sizes))]
+            ; so we treat header-boundaries as optional.
+      (let [header-count        (first header-count)
+            header-boundaries   (if (pos? header-count)
+                                  (map ->RawPacketBoundary
+                                       (take header-count header-indices)
+                                       (take header-count header-sizes)))
+            payload-count       (first payload-count)
+            payload-boundaries  (map ->RawPacketBoundary
+                                     (take payload-count payload-indices)
+                                     (take payload-count payload-sizes))]
         (->RawPacket data
-                     header-bounds
-                     payload-bounds)))))
+                     header-boundaries
+                     payload-boundaries)))))
 
 (defn write [handle data]
   "Writes data to a socket/device.
