@@ -1,53 +1,102 @@
 (ns clojure-pf.form
-  "Module to retrieve useful information from user-defined packet form")
+  "Module to retrieve useful information from user-defined packet forms")
 
-; Utilities
+; Packet field entry that defines the order, type and size of a
+; single field in a packet.
+(defrecord Entry [field
+                  order
+                  kind
+                  size])
 
-(def ^:private ^:const entry->size 3)
+; Validation utilities
+
+(defn- field->valid? [field]
+  "Tests whether a field is valid."
+  (keyword? field))
+
+(defn- order->valid? [order]
+  "Tests whether a field order is valid."
+  (contains? #{:le :be} order))
+
+(defn- kind->valid? [kind]
+  "Tests whether a field kind is valid."
+  (contains? #{:byte :short :int :long} kind))
+
+(defn- size->valid? [size]
+  "Tests whether a field size is valid."
+  (and (number? size)
+       (pos? size)))
 
 (defn- entry->valid? [entry]
-  "Tests whether a form entry is valid according to the following rules:
-   * A form field must be a keyword.
-   * The kind must be a keyword denoting a number or a buffer.
-    - If it's a number, check if the size is either 1, 2, 4 or 8.
-    - If it's a buffer, check if the size is above zero."
-  (let [size (:size entry)]
-    (and (keyword? (:field entry))
-         (case (:kind entry)
-           :int (contains? #{1 2 4 8} size)
-           :buf (pos? size)))))
+  "Tests whether a form entry is valid."
+  (and (field->valid? (:field entry))
+       (order->valid? (:order entry))
+       (kind->valid?  (:kind entry))
+       (size->valid?  (:size entry))))
 
-(defn- entry->parse [form]
-  "Parses an entry from a form."
-  (let [[field kind size] (take entry->size form)
-        entry {:field field
-               :kind kind
-               :size size}]
+; Form token utilities
+
+(defn- pull-token [raw-form]
+  "Pulls the next token from a raw form.
+  A list containing the token and the rest of the form is returned."
+  (let [token (first raw-form)]
+    (if token
+      [token (rest raw-form)])))
+
+(defn- pull-order [raw-form]
+  "Pulls a keyword denoting an order from a raw form.
+  If the order is valid, it's returned along with the rest of the form.
+  Otherwise a default order and the original form is returned."
+  (println "pull-order " raw-form)
+  (let [[order raw-form-tail] (pull-token raw-form)]
+    (if (order->valid? order)
+      [order raw-form-tail]
+      [:be raw-form])))
+
+(defn- pull-kind [raw-form]
+  "Pulls a keyword denoting the kind of a field from a raw form.
+  If the kind is valid, it's returned along with the rest of the form.
+  Otherwise nil is returned."
+  (println "pull-kind " raw-form)
+  (let [[kind raw-form-tail] (pull-token raw-form)]
+    (if (kind->valid? kind)
+      [kind raw-form-tail])))
+
+(defn- pull-size [raw-form]
+  "Pulls an optional number denoting the size of a field from a raw form.
+  If the size is valid, it's returned along with the rest of the form.
+  Otherwise one is returned along with the original form."
+  (println "pull-size " raw-form)
+  (let [[size raw-form-tail] (pull-token raw-form)]
+    (if (size->valid? size)
+      [size raw-form-tail]
+      [1 raw-form])))
+
+(defn- pull-entry [raw-form]
+  "Parses an entry from a raw form.
+  If successful, returns an entry and the rest of the form in a list.
+  Otherwise nil is returned along with the original form."
+  (let [[field raw-form-tail] (pull-token raw-form)
+        [order raw-form-tail] (pull-order raw-form-tail)
+        [kind raw-form-tail]  (pull-kind raw-form-tail)
+        [size raw-form-tail]  (pull-size raw-form-tail)
+        entry                 (Entry. field order kind size)]
+    (println "pull-entry: " {:field (:field entry)
+                             :order (:order entry)
+                             :kind (:kind entry)
+                             :size (:size entry)})
     (if (entry->valid? entry)
-      entry)))
+      [entry raw-form-tail]
+      [nil raw-form])))
 
 ; Exports
 
-(defn to-entries [form]
-  "Returns a list of form entries, each containing the following information:
-   * field name
-   * value kind (type)
-   * value size
-   * value offset"
+(defn to-entries [raw-form]
+  "Parses a list of packet field entries from a form."
   (loop [entries  []
-         form     form
-         offset   0]
-    (let [entry (entry->parse form)]
+         raw-form raw-form]
+    (let [[entry raw-form-tail] (pull-entry raw-form)]
       (if-not entry
         entries
-        (let [entry   (assoc entry :offset offset)
-              entries (conj entries entry)
-              form    (drop entry->size form)
-              offset  (+ offset (:size entry))]
-          (recur entries form offset))))))
-
-(defn size [form]
-  "Returns the total packet size defined by a form."
-  (->> (to-entries form)
-       (map :size)
-       (reduce +)))
+        (recur (conj entries entry)
+               raw-form-tail)))))
