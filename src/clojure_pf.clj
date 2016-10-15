@@ -53,7 +53,7 @@
 (defn destroy-context
   "Destroys a packet socket/device context."
   [context]
-  (io/close (:handle context)))
+  (io/close (.handle context)))
 
 ;
 ; DEBUG
