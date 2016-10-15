@@ -67,19 +67,17 @@
                    :data
                    ByteBuffer/wrap
                    .asReadOnlyBuffer)]
-    (loop [header-regions  (:header-regions raw-packet)
-           payload-regions (:payload-regions raw-packet)
-           packets []]
+    (loop [payload-regions  (:payload-regions raw-packet)
+           timestamps       (:timestamps raw-packet)
+           packets          []]
       (if (empty? payload-regions)
         packets
-        (let [header-region   (first header-regions)
-              payload-region  (first payload-regions)
-              timestamp       (if header-region
-                                (deserialize-timestamp buffer header-region))
+        (let [payload-region  (first payload-regions)
+              timestamp       (first timestamps)
               payload         (deserialize-payload buffer
                                                    payload-region
                                                    entries)
               packet          (->Packet timestamp payload)]
-          (recur (rest header-regions)
-                 (rest payload-regions)
+          (recur (rest payload-regions)
+                 (rest timestamps)
                  (conj packets packet)))))))

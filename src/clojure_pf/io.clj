@@ -23,37 +23,33 @@
 
 (defn read-raw [handle read-buffer-size maximum-packets]
   "Reads at most 'read-buffer-size' bytes from a socket/device handle,
-  containing at most 'maximum-packets' headers and payloads.
+  containing at most 'maximum-packets' payloads.
   Returns a RawPacket record on success."
   (let [data            (byte-array read-buffer-size)
-        header-indices  (int-array maximum-packets)
-        header-sizes    (int-array maximum-packets)
+        seconds         (long-array maximum-packets)
+        microseconds    (long-array maximum-packets)
         payload-indices (int-array maximum-packets)
         payload-sizes   (int-array maximum-packets)
-        header-count    (int-array 1)
         payload-count   (int-array 1)
         read-count      (jna/invoke Integer
                                     clojure_pf/pf_read
                                     handle
                                     data            (count data)
                                     maximum-packets
-                                    header-indices  header-sizes
+                                    seconds         microseconds
                                     payload-indices payload-sizes
-                                    header-count    payload-count)]
+                                    payload-count)]
     (if-not (= read-count -1)
-      (let [header-count    (first header-count)
-            ; BPF headers are only prepended to payloads on BSD-derived systems,
-            ; so we treat header-regions as optional.
-            header-regions  (if (pos? header-count)
-                              (map ->RawPacketRegion
-                                   (take header-count header-indices)
-                                   (take header-count header-sizes)))
-            payload-count   (first payload-count)
+      (let [payload-count   (first payload-count)
+
+            timestamps      (map ->Timestamp
+                                 (take payload-count seconds)
+                                 (take payload-count microseconds))
             payload-regions (map ->RawPacketRegion
                                  (take payload-count payload-indices)
                                  (take payload-count payload-sizes))]
         (->RawPacket data
-                     header-regions
+                     timestamps
                      payload-regions)))))
 
 (defn write [handle data]

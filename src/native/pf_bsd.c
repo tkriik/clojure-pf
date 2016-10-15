@@ -96,10 +96,11 @@ pf_set_filter(int fd, const int *ins, const int ins_len)
 
 int32_t
 pf_read(int fd,
-    uint8_t *buf, int32_t buf_size, int32_t max_packets,
-    int32_t *header_indices, int32_t *header_sizes,
-    int32_t *payload_indices, int32_t *payload_sizes,
-    int32_t *nheaders, int32_t *npayloads)
+	uint8_t *buf,			int32_t buf_size,
+	int32_t  max_packets,
+	int64_t	*seconds,		int64_t *microseconds,
+	int32_t *payload_indices,	int32_t *payload_sizes,
+	int32_t *npayloads)
 {
 	ssize_t nr;
 
@@ -120,15 +121,11 @@ pf_read(int fd,
 		return -1;
 	}
 
-	/* Zero these just to be safe. */
-	*nheaders = 0;
+	/* Zero this just to be safe. */
 	*npayloads = 0;
 
-	size_t i_hdr = 0; /* packet header index */
-	while (i_hdr < (size_t)nr) {
-		if ((max_packets <= *nheaders) || (max_packets <= *npayloads))
-			break;
-
+	size_t i_hdr = 0; /* BPF packet header index */
+	while (i_hdr < (size_t)nr && *npayloads < max_packets) {
 		/* This should never happen. Check anyway. */
 		if ((size_t)nr - i_hdr < sizeof(struct bpf_hdr)) {
 			warnx("read: truncated BPF header");
@@ -136,15 +133,14 @@ pf_read(int fd,
 		}
 
 		/* XXX: suspicious */
-		struct bpf_hdr *hdr = (void *)(&buf[i_hdr]);
+		struct bpf_hdr *hdr = (struct bpf_hdr *)(&buf[i_hdr]);
 
-		*header_indices++ = i_hdr;
-		*header_sizes++ = hdr->bh_hdrlen;
+		*seconds++ = hdr->bh_tstamp.tv_sec;
+		*microseconds++	= hdr->bh_tstamp.tv_usec;
 
 		*payload_indices++ = i_hdr + hdr->bh_hdrlen;
 		*payload_sizes++ = hdr->bh_caplen;
 
-		(*nheaders)++;
 		(*npayloads)++;
 
 		/* Increment header index to the start of the next packet. */

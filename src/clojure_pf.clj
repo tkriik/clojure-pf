@@ -65,12 +65,7 @@
               :src            :byte   6
               :bssid          :byte   6
               :seq      :be   :short
-              :char4          :char   4
-              :short4   :be   :short  4
-              :int4     :be   :int    4
-              :long4    :be   :long   4
-              :float4   :be   :float  4
-              :double4  :be   :double 4])
+              :data           :byte   128])
 
 (def my-opts {:immediate true :data-link-type :ieee80211})
 

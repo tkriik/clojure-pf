@@ -7,12 +7,11 @@
 ; Packet-specific timestamp.
 (defrecord Timestamp [seconds microseconds])
 
-; Raw packet type returned from socket/device reads, containing
-; data for one or more packets.
+; Record type returned from socket/device reads, containing data
+; for one or more packets.
 (defrecord RawPacket [data
-                      header-regions
+                      timestamps
                       payload-regions])
 
-; Region type for denoting the start index and size of a
-; packet header or payload.
+; Record type for denoting the start index and size of a packet payload.
 (defrecord RawPacketRegion [index size])
