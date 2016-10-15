@@ -35,27 +35,26 @@
         read-count      (jna/invoke Integer
                                     clojure_pf/pf_read
                                     handle
-                                    data (count data)
+                                    data            (count data)
                                     maximum-packets
-                                    header-indices header-sizes
+                                    header-indices  header-sizes
                                     payload-indices payload-sizes
-                                    header-count
-                                    payload-count)]
+                                    header-count    payload-count)]
     (if-not (= read-count -1)
+      (let [header-count    (first header-count)
             ; BPF headers are only prepended to payloads on BSD-derived systems,
-            ; so we treat header-boundaries as optional.
-      (let [header-count        (first header-count)
-            header-boundaries   (if (pos? header-count)
-                                  (map ->RawPacketBoundary
-                                       (take header-count header-indices)
-                                       (take header-count header-sizes)))
-            payload-count       (first payload-count)
-            payload-boundaries  (map ->RawPacketBoundary
-                                     (take payload-count payload-indices)
-                                     (take payload-count payload-sizes))]
+            ; so we treat header-regions as optional.
+            header-regions  (if (pos? header-count)
+                              (map ->RawPacketRegion
+                                   (take header-count header-indices)
+                                   (take header-count header-sizes)))
+            payload-count   (first payload-count)
+            payload-regions (map ->RawPacketRegion
+                                 (take payload-count payload-indices)
+                                 (take payload-count payload-sizes))]
         (->RawPacket data
-                     header-boundaries
-                     payload-boundaries)))))
+                     header-regions
+                     payload-regions)))))
 
 (defn write [handle data]
   "Writes data to a socket/device.

@@ -6,17 +6,17 @@
 
 ; Deserialization utilities
 
-(defn- bounded-buffer [buffer boundary]
-  "Returns a buffer with the position and limit set according to a boundary."
-  (let [index (.index boundary)
-        size  (.size boundary)]
+(defn- regional-buffer [buffer region]
+  "Returns a buffer with the position and limit set according to a region."
+  (let [index (.index region)
+        size  (.size region)]
     (-> (.asReadOnlyBuffer buffer)
         (.position index)
         (.limit (+ index size)))))
 
-(defn- deserialize-timestamp [buffer boundary]
+(defn- deserialize-timestamp [buffer region]
   "Deserializes a BPF header timestamp."
-  (let [buffer (-> (bounded-buffer buffer boundary)
+  (let [buffer (-> (regional-buffer buffer region)
                    (.order ByteOrder/LITTLE_ENDIAN))]
     (try
       (let [seconds       (-> (.getInt buffer)
@@ -24,8 +24,7 @@
             microseconds  (-> (.getInt buffer)
                               (bit-and 0xFFFFFFFF)
                               (mod (* 1000 1000)))]
-        {:seconds       seconds
-         :microseconds  microseconds}))))
+        (->Timestamp seconds microseconds)))))
 
 (defn- deserialize-value [buffer entry]
   "Deserializes a value from a buffer according to a form entry."
@@ -40,9 +39,9 @@
              4 (.getInt buffer)
              8 (.getLong buffer)))))
 
-(defn- deserialize-payload [buffer boundary entries]
-  "Deserializes a packet payload according to a given boundary and form entries."
-  (let [buffer (bounded-buffer buffer boundary)]
+(defn- deserialize-payload [buffer region entries]
+  "Deserializes a packet payload according to a given region and form entries."
+  (let [buffer (regional-buffer buffer region)]
     (loop [entries entries
            payload {}]
       (if (empty? entries)
@@ -58,24 +57,23 @@
   "Deserializes one or more packets from a RawPacket according
   to given entries. Returns a list of destructured packets on success."
   (let [buffer (-> (.data raw-packet)
-                   (ByteBuffer/wrap)
+                   ByteBuffer/wrap
                    .asReadOnlyBuffer)]
-    (loop [header-boundaries  (.header-boundaries raw-packet)
-           payload-boundaries (.payload-boundaries raw-packet)
+    (loop [header-regions  (.header-regions raw-packet)
+           payload-regions (.payload-regions raw-packet)
            packets []]
-      (if (empty? payload-boundaries)
+      (if (empty? payload-regions)
         packets
-        (let [header-boundary   (first header-boundaries)
-              payload-boundary  (first payload-boundaries)
-              timestamp         (if header-boundary
-                                  (deserialize-timestamp buffer header-boundary))
+        (let [header-region   (first header-regions)
+              payload-region  (first payload-regions)
+              timestamp         (if header-region
+                                  (deserialize-timestamp buffer header-region))
               payload           (deserialize-payload buffer
-                                                     payload-boundary
+                                                     payload-region
                                                      entries)
-              packet            {:time    timestamp
-                                 :payload payload}]
-          (recur (rest header-boundaries)
-                 (rest payload-boundaries)
+              packet            (->Packet timestamp payload)]
+          (recur (rest header-regions)
+                 (rest payload-regions)
                  (conj packets packet)))))))
 
 ; Serialization utilities
