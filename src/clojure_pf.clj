@@ -1,53 +1,59 @@
 (ns clojure-pf
   "Packet socket/device context functions."
-  (:require [clojure-pf.data-link-type :as dlt]
-            [clojure-pf.native :as native]
-            [clojure-pf.packet :as packet]))
+  (:require [clojure-pf.binary          :as binary]
+            [clojure-pf.data-link-type  :as dlt]
+            [clojure-pf.form            :as form]
+            [clojure-pf.io              :as io]))
 
 ; Packet socket/device context
-(deftype Context [handle
-                  form
-                  options])
+(deftype Context [handle    ; socket/device file descriptor
+                  entries   ; parsed packet form entries
+                  options]) ; context creation options
 
 (def ^:private ^:const default-options
   "Default packet context options."
   {:read-buffer-size  65536
+   :maximum-packets   4096
    :data-link-type    :null
    :header-complete   false
    :immediate         false})
 
-(defn create-context
+(defn create
   "Creates a packet socket/device context with the given interface,
   form and options."
   ([interface form]
-   (create-context interface form {}))
+   (create interface form {}))
   ([interface form options]
-   (let [options          (merge default-options options)
+   (let [entries          (form/to-entries form)
+         options          (merge default-options options)
          read-buffer-size (:read-buffer-size options)
          data-link-type   (or (dlt/to-code (:data-link-type options)) 0)
          header-complete  (:header-complete options)
          immediate        (:immediate options)
-         fd               (native/open interface
-                                       read-buffer-size
-                                       data-link-type
-                                       header-complete
-                                       immediate)]
-     (if fd
-       (->Context fd form options)))))
+         handle           (io/open interface
+                                   read-buffer-size
+                                   data-link-type
+                                   header-complete
+                                   immediate)]
+     (if handle
+       (->Context handle entries options)))))
 
 (defn receive
-  "Returns one or more destructured packets."
+  "Returns one or more destructured packets in a list on success."
   [context]
-  (let [fd    (.handle context)
-        form  (.form context)
-        size  (:read-buffer-size (.options context))
-        data  (native/read fd size)]
-    (packet/deserialize data form)))
+  (let [handle      (.handle context)
+        entries     (.entries context)
+        options     (.options context)
+        raw-packet  (io/read handle
+                             (:read-buffer-size options)
+                             (:maximum-packets options))]
+    (if raw-packet
+      (binary/deserialize raw-packet entries))))
 
 (defn destroy-context
   "Destroys a packet socket/device context."
   [context]
-  (native/close (:handle context)))
+  (io/close (:handle context)))
 
 ;
 ; DEBUG
@@ -58,10 +64,9 @@
               :dst    :buf  6
               :src    :buf  6
               :bssid  :buf  6
-              :seq    :buf  2
-              :data   :buf  1500])
+              :seq    :buf  2])
 
-(def my-opts {:data-link-type :ieee80211})
+(def my-opts {:immediate true :data-link-type :ieee80211})
 
-(def my-ctx (create-context "iwn0" my-form my-opts))
+(def my-ctx (create "iwn0" my-form my-opts))
 

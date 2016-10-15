@@ -11,10 +11,11 @@
    * The kind must be a keyword denoting a number or a buffer.
     - If it's a number, check if the size is either 1, 2, 4 or 8.
     - If it's a buffer, check if the size is above zero."
-  (and (keyword? (:field entry))
-       (case (:kind entry)
-         :int (contains? #{1 2 4 8} (:size entry))
-         :buf (pos? (:size entry)))))
+  (let [size (:size entry)]
+    (and (keyword? (:field entry))
+         (case (:kind entry)
+           :int (contains? #{1 2 4 8} size)
+           :buf (pos? size)))))
 
 (defn- entry->parse [form]
   "Parses an entry from a form."
