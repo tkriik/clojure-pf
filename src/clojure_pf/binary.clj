@@ -15,20 +15,17 @@
         (.limit (+ index size)))))
 
 (defn- deserialize-timestamp [buffer boundary]
-  "Deserializes a BPF header timestamp if boundary is defined."
-  (if boundary
-    (let [buffer (-> (bounded-buffer buffer boundary)
-                     (.order ByteOrder/LITTLE_ENDIAN))]
-      (try
-        (let [seconds       (-> (.getInt buffer)
-                                (bit-and 0xFFFFFFFF))
-              microseconds  (-> (.getInt buffer)
-                                (bit-and 0xFFFFFFFF)
-                                (mod (* 1000 1000)))]
-          {:seconds       seconds
-           :microseconds  microseconds})
-        (catch Exception e
-          (println "deserialize-timestamp: " (.getMessage e)))))))
+  "Deserializes a BPF header timestamp."
+  (let [buffer (-> (bounded-buffer buffer boundary)
+                   (.order ByteOrder/LITTLE_ENDIAN))]
+    (try
+      (let [seconds       (-> (.getInt buffer)
+                              (bit-and 0xFFFFFFFF))
+            microseconds  (-> (.getInt buffer)
+                              (bit-and 0xFFFFFFFF)
+                              (mod (* 1000 1000)))]
+        {:seconds       seconds
+         :microseconds  microseconds}))))
 
 (defn- deserialize-value [buffer entry]
   "Deserializes a value from a buffer according to a form entry."
@@ -41,12 +38,10 @@
              1 (.get buffer)
              2 (.getShort buffer)
              4 (.getInt buffer)
-             8 (.getLong buffer)))
-    (catch Exception e
-      (println "deserialize-value: " (.getMessage e)))))
+             8 (.getLong buffer)))))
 
 (defn- deserialize-payload [buffer boundary entries]
-  "Deserializes a packet payload according to given boundary and form entries."
+  "Deserializes a packet payload according to a given boundary and form entries."
   (let [buffer (bounded-buffer buffer boundary)]
     (loop [entries entries
            payload {}]
@@ -61,7 +56,7 @@
 
 (defn deserialize [raw-packet entries]
   "Deserializes one or more packets from a RawPacket according
-  to given entries. Returns a list of Packet objects on success."
+  to given entries. Returns a list of destructured packets on success."
   (let [buffer (-> (.data raw-packet)
                    (ByteBuffer/wrap)
                    .asReadOnlyBuffer)]
@@ -72,8 +67,8 @@
         packets
         (let [header-boundary   (first header-boundaries)
               payload-boundary  (first payload-boundaries)
-              timestamp         (deserialize-timestamp buffer
-                                                       header-boundary)
+              timestamp         (if header-boundary
+                                  (deserialize-timestamp buffer header-boundary))
               payload           (deserialize-payload buffer
                                                      payload-boundary
                                                      entries)
