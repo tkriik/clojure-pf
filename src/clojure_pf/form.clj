@@ -47,7 +47,6 @@
   "Pulls a keyword denoting an order from a raw form.
   If the order is valid, it's returned along with the rest of the form.
   Otherwise a default order and the original form is returned."
-  (println "pull-order " raw-form)
   (let [[order raw-form-tail] (pull-token raw-form)]
     (if (order->valid? order)
       [order raw-form-tail]
@@ -57,7 +56,6 @@
   "Pulls a keyword denoting the kind of a field from a raw form.
   If the kind is valid, it's returned along with the rest of the form.
   Otherwise nil is returned."
-  (println "pull-kind " raw-form)
   (let [[kind raw-form-tail] (pull-token raw-form)]
     (if (kind->valid? kind)
       [kind raw-form-tail])))
@@ -66,7 +64,6 @@
   "Pulls an optional number denoting the size of a field from a raw form.
   If the size is valid, it's returned along with the rest of the form.
   Otherwise one is returned along with the original form."
-  (println "pull-size " raw-form)
   (let [[size raw-form-tail] (pull-token raw-form)]
     (if (size->valid? size)
       [size raw-form-tail]
@@ -81,10 +78,6 @@
         [kind raw-form-tail]  (pull-kind raw-form-tail)
         [size raw-form-tail]  (pull-size raw-form-tail)
         entry                 (Entry. field order kind size)]
-    (println "pull-entry: " {:field (:field entry)
-                             :order (:order entry)
-                             :kind (:kind entry)
-                             :size (:size entry)})
     (if (entry->valid? entry)
       [entry raw-form-tail]
       [nil raw-form])))
