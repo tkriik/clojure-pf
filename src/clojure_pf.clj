@@ -55,10 +55,11 @@
   "Writes one destructured packet payload through a socket/device.
   Returns the number of bytes written on success."
   [context packet]
-  (let [entries           (:entries context)
+  (let [handle            (:handle context)
+        entries           (:entries context)
         raw-output-packet (binary/serialize packet entries)
         write-buffer-size (get-in context [:options :write-buffer-size])]
-    (io/write-raw raw-output-packet)))
+    (io/write-raw handle raw-output-packet write-buffer-size)))
 
 (defn close
   "Closes a packet socket/device context."
