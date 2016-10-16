@@ -86,14 +86,6 @@ err_open:
 	return -1;
 }
 
-int
-pf_set_filter(int fd, const int *ins, const int ins_len)
-{
-	warnx("BIOCSETF");
-	// TODO
-	return -1;
-}
-
 int32_t
 pf_read(int fd,
 	uint8_t *buf,			int32_t buf_size,

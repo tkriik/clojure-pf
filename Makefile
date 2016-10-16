@@ -1,6 +1,6 @@
 CC=		gcc
 
-CFLAGS=		-std=c99 -pedantic -Werror -Wextra -c
+CFLAGS=		-std=c99 -pedantic -Wall -Wextra -Werror -c
 
 SRC_BSD=	src/native/pf_bsd.c
 
