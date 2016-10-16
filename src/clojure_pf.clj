@@ -5,24 +5,25 @@
             [clojure-pf.form            :as form]
             [clojure-pf.io              :as io]))
 
-; Packet socket/device context
-(deftype Context [handle    ; socket/device file descriptor
-                  entries   ; parsed packet form entries
-                  options]) ; context creation options
+; Record type for a packet socket/device context.
+(defrecord Context [handle    ; socket/device file descriptor
+                    entries   ; parsed packet form entries
+                    options]) ; context creation options
 
-(def ^:private ^:const default-options
-  "Default packet context options."
-  {:read-buffer-size  65536
-   :maximum-packets   4096
-   :data-link-type    :null
+(def ^:const default-options
+  "Default context options."
+  {:data-link-type    :null
    :header-complete   false
-   :immediate         false})
+   :immediate         true
+   :maximum-packets   4096
+   :read-buffer-size  65536
+   :write-buffer-size 65536})
 
-(defn create
-  "Creates a packet socket/device context with the given interface,
+(defn open
+  "Opens a packet socket/device context with the given interface,
   form and options."
   ([interface form]
-   (create interface form {}))
+   (open interface form {}))
   ([interface form options]
    (let [entries          (form/to-entries form)
          options          (merge default-options options)
@@ -38,22 +39,31 @@
      (if handle
        (->Context handle entries options)))))
 
-(defn receive
+(defn receive-packets
   "Returns one or more destructured packets in a list on success."
   [context]
-  (let [handle      (.handle context)
-        entries     (.entries context)
-        options     (.options context)
-        raw-packet  (io/read-raw handle
-                             (:read-buffer-size options)
-                             (:maximum-packets options))]
-    (if raw-packet
-      (binary/deserialize raw-packet entries))))
+  (let [handle            (:handle context)
+        entries           (:entries context)
+        options           (:options context)
+        raw-input-packet  (io/read-raw handle
+                                       (:read-buffer-size options)
+                                       (:maximum-packets options))]
+    (if raw-input-packet
+      (binary/deserialize raw-input-packet entries))))
 
-(defn destroy-context
-  "Destroys a packet socket/device context."
+(defn send-packet
+  "Writes one destructured packet payload through a socket/device.
+  Returns the number of bytes written on success."
+  [context packet]
+  (let [entries           (:entries context)
+        raw-output-packet (binary/serialize packet entries)
+        write-buffer-size (get-in context [:options :write-buffer-size])]
+    (io/write-raw raw-output-packet)))
+
+(defn close
+  "Closes a packet socket/device context."
   [context]
-  (io/close (.handle context)))
+  (io/close (:handle context)))
 
 ;
 ; DEBUG
@@ -69,5 +79,5 @@
 
 (def my-opts {:immediate true :data-link-type :ieee80211})
 
-(def my-ctx (create "iwn0" my-form my-opts))
+(def my-ctx (open "iwn0" my-form my-opts))
 

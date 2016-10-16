@@ -16,21 +16,21 @@
 
 (defn- deserialize-value [buffer entry]
   "Deserializes a value from a buffer according to a form entry."
-  (let [kind            (:kind entry)
-        size            (:size entry)
+  (let [kind          (:kind entry)
+        size          (:size entry)
         [buffer
-         array-ctor]    (case kind
-                          :byte   [buffer                   byte-array]
-                          :short  [(.asShortBuffer buffer)  short-array]
-                          :int    [(.asIntBuffer buffer)    int-array]
-                          :long   [(.asLongBuffer buffer)   long-array]
-                          :float  [(.asFloatBuffer buffer)  float-array]
-                          :double [(.asDoubleBuffer buffer) double-array])
-        size-remaining  (min size (.remaining buffer))]
-    (if (pos? size-remaining)
+         array-ctor]  (case kind
+                        :byte   [buffer                   byte-array]
+                        :short  [(.asShortBuffer buffer)  short-array]
+                        :int    [(.asIntBuffer buffer)    int-array]
+                        :long   [(.asLongBuffer buffer)   long-array]
+                        :float  [(.asFloatBuffer buffer)  float-array]
+                        :double [(.asDoubleBuffer buffer) double-array])
+        size-left     (min size (.remaining buffer))]
+    (if (pos? size-left)
       (if (= size 1)
         (.get buffer)
-        (let [array (array-ctor size-remaining)]
+        (let [array (array-ctor size-left)]
           (.get buffer array)
           array)))))
 
@@ -48,15 +48,15 @@
 
 ; Deserialization exports
 
-(defn deserialize [raw-packet entries]
-  "Deserializes one or more packets from a RawPacket according
+(defn deserialize [raw-input-packet entries]
+  "Deserializes one or more packets from a RawInputPacket according
   to given entries. Returns a list of destructured packets on success."
-  (let [buffer (-> raw-packet
+  (let [buffer (-> raw-input-packet
                    :data
                    ByteBuffer/wrap
                    .asReadOnlyBuffer)]
-    (loop [payload-regions  (:payload-regions raw-packet)
-           timestamps       (:timestamps raw-packet)
+    (loop [payload-regions  (:payload-regions raw-input-packet)
+           timestamps       (:timestamps raw-input-packet)
            packets          []]
       (if (empty? payload-regions)
         packets
@@ -69,3 +69,40 @@
           (recur (rest payload-regions)
                  (rest timestamps)
                  (conj packets packet)))))))
+
+; Serialization utiliies
+
+(defn- serialize-value [value buffer entry]
+  "Serializes a value to a buffer according to an entry."
+  (let [kind      (:kind entry)
+        size      (:size entry)
+        buffer    (case kind
+                    :byte   buffer
+                    :short  (.asShortBuffer buffer)
+                    :int    (.asIntBuffer buffer)
+                    :long   (.asLongBuffer buffer)
+                    :float  (.asFloatBuffer buffer)
+                    :double (.asDoubleBuffer buffer))
+        size-left (min size (.remaining buffer))]
+    (if (pos? size-left)
+      (if (= size 1)
+        (.put buffer value)
+        (.put buffer value 0 size-left)))))
+
+; Serialization exports
+
+(defn serialize [packet entries]
+  "Serializes a packet payload according to a list of entries.
+  Returns a RawOutputPacket on success."
+  (let [packet-size (reduce + (map :size entries))
+        buffer      (ByteBuffer/allocate packet-size)]
+    (loop [entries entries]
+      (if-not (empty? entries)
+        (let [entry (first entries)
+              field (:field entry)
+              value (get packet field)]
+          (if (serialize-value value buffer entry)
+            (recur (rest entries))))))
+    (let [data          (.array buffer)
+          packet-region (->RawPacketRegion 0 (.position buffer))]
+      (->RawOutputPacket data packet-region))))
