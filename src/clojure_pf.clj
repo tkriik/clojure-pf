@@ -1,9 +1,8 @@
 (ns clojure-pf
   "Packet socket/device context functions."
-  (:require [clojure-pf.binary          :as binary]
-            [clojure-pf.data-link-type  :as dlt]
-            [clojure-pf.form            :as form]
-            [clojure-pf.io              :as io]))
+  (:require [clojure-pf.core.binary :as binary]
+            [clojure-pf.core.form   :as form]
+            [clojure-pf.core.io     :as io]))
 
 ; Record type for a packet socket/device context.
 (defrecord Context [handle    ; socket/device file descriptor
@@ -25,17 +24,13 @@
   ([interface form]
    (open interface form {}))
   ([interface form options]
-   (let [entries          (form/to-entries form)
-         options          (merge default-options options)
-         read-buffer-size (:read-buffer-size options)
-         data-link-type   (or (dlt/to-code (:data-link-type options)) 0)
-         header-complete  (:header-complete options)
-         immediate        (:immediate options)
-         handle           (io/open interface
-                                   read-buffer-size
-                                   data-link-type
-                                   header-complete
-                                   immediate)]
+   (let [options  (merge default-options options)
+         entries  (form/to-entries form)
+         handle   (io/open interface
+                           (:read-buffer-size options)
+                           (:data-link-type   options)
+                           (:header-complete  options)
+                           (:immediate        options))]
      (if handle
        (->Context handle entries options)))))
 

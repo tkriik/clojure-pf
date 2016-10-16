@@ -1,4 +1,4 @@
-(ns clojure-pf.instruction
+(ns clojure-pf.bpf.instruction
   "BPF instruction constants categorized by usage.")
 
 (def class-table

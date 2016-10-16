@@ -1,7 +1,8 @@
-(ns clojure-pf.io
+(ns clojure-pf.core.io
   "Wrapper functions to native packet filter routines."
-  (:require [net.n01se.clojure-jna  :as     jna]
-            [clojure-pf.packet      :refer  :all]))
+  (:require [net.n01se.clojure-jna          :as     jna]
+            [clojure-pf.core.data-link-type :as     dlt]
+            [clojure-pf.core.packet         :refer  :all]))
 
 (defn open [interface
             read-buffer-size
@@ -15,7 +16,7 @@
                            clojure_pf/pf_open
                            interface
                            read-buffer-size
-                           data-link-type
+                           (dlt/to-code data-link-type)
                            header-complete
                            immediate)]
     (if-not (= handle -1)

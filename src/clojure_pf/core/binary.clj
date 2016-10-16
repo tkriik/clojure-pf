@@ -1,8 +1,8 @@
-(ns clojure-pf.binary
+(ns clojure-pf.core.binary
   "Packet serialization and deserialization functions."
   (:import (java.nio ByteBuffer ByteOrder))
-  (:require [clojure-pf.form    :as     form]
-            [clojure-pf.packet  :refer  :all]))
+  (:require [clojure-pf.core.form    :as     form]
+            [clojure-pf.core.packet  :refer  :all]))
 
 ; Deserialization utilities
 

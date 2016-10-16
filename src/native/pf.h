@@ -1,5 +1,5 @@
-#ifndef _CLOJURE_PF_PF_H_
-#define _CLOJURE_PF_PF_H_
+#ifndef _CLOJURE_PF_H_
+#define _CLOJURE_PF_H_
 
 #include <stdint.h>
 

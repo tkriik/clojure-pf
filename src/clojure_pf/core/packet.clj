@@ -1,4 +1,4 @@
-(ns clojure-pf.packet
+(ns clojure-pf.core.packet
   "Packet type definitions.")
 
 ; Destructured packet used in the application layer.

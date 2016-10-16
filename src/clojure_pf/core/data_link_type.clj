@@ -1,4 +1,4 @@
-(ns clojure-pf.data-link-type
+(ns clojure-pf.core.data-link-type
   "Supported data link type level codes."
   (:require [clojure.set :refer [map-invert]]))
 

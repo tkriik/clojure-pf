@@ -1,4 +1,4 @@
-(ns clojure-pf.form
+(ns clojure-pf.core.form
   "Module to retrieve useful information from user-defined packet forms")
 
 ; Validation utilities
