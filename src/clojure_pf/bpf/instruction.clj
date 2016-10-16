@@ -1,8 +1,8 @@
 (ns clojure-pf.bpf.instruction
   "BPF instruction constants categorized by usage.")
 
-(def class-table
-  "Instruction classes."
+(def ^:private ^:const kind-table
+  "Instruction kinds"
   {:ld    0x00    ; load to acc
    :ldx   0x01    ; load to idx
    :st    0x02    ; store acc
@@ -11,13 +11,13 @@
    :ret   0x06    ; return
    :misc  0x07})  ; miscellaneous
 
-(def size-table
+(def ^:private ^:const size-table
   "Data size variants."
   {:w     0x00    ; word
    :h     0x08    ; halfword
    :b     0x10})  ; byte
 
-(def mode-table
+(def ^:private ^:const mode-table
   "Addressing modes."
   {:imm   0x00    ; constant
    :abs   0x20    ; data at fixed-offset
@@ -26,7 +26,7 @@
    :len   0x80    ; packet length
    :msh   0xa0})  ; IP header length
 
-(def op-table
+(def ^:private ^:const operation-table
   "Arithmetic and jump instructions."
   {:add   0x00    ; acc <- acc + k 
    :sub   0x10    ; acc <- acc - k 
@@ -43,13 +43,47 @@
    :jge   0x30    ; jump-if-greater-or-equal
    :jset  0x40})  ; jump-if-set
 
-(def src-table
+(def ^:private ^:const source-table
   "Value modes."
   {:k     0x00    ; constant
    :x     0x08})  ; index register
 
-(def rval-table
+(def ^:private ^:const retval-table
   "Return value modes."
   {:k     0x00    ; constant
    :x     0x08    ; index register
    :a     0x10})  ; accumulator
+
+(def ^:private ^:const table
+  "All instruction constants."
+  (merge kind-table
+         size-table
+         mode-table
+         operation-table
+         source-table
+         retval-table))
+
+; Category checking
+
+(defn kind? [ins]
+  (contains? kind-table ins))
+
+(defn size? [ins]
+  (contains? size-table ins))
+
+(defn mode? [ins]
+  (contains? mode-table ins))
+
+(defn op? [ins]
+  (contains? operation-table ins))
+
+(defn source? [ins]
+  (contains? source-table ins))
+
+(defn retval? [ins]
+  (contains? retval-table ins))
+
+; Translation
+
+(defn to-code [ins]
+  (get table ins))
