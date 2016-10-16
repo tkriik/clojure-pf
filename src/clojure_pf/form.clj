@@ -39,19 +39,23 @@
 
 ; Form token utilities
 
-(defn- pull-token [form]
+(defn- pull-token [form valid?]
   "Pulls the next token from a form.
-  A list containing the token and the rest of the form is returned."
+  If the validator returns true for the token, it is returned along
+  with the rest of the form. Otherwise, nil is returned along
+  with the original form."
   (let [token (first form)
         tail  (rest form)]
-    [token tail]))
+    (if (valid? token)
+      [token tail]
+      [nil form])))
 
 (defn- pull-entry [form]
   "Parses an entry from a form.
   If successful, returns an entry and the rest of the form in a list."
-  (let [[field tail]  (pull-token form)
-        [kind tail]   (pull-token tail)
-        [size tail]   (pull-token tail)
+  (let [[field tail]  (pull-token form keyword?)
+        [kind tail]   (pull-token tail keyword?)
+        [size tail]   (pull-token tail number?)
         entry         (if-not size
                         (->ScalarEntry field kind)
                         (->ArrayEntry field kind size))]

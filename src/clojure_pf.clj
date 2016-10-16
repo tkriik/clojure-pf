@@ -70,13 +70,13 @@
 ; DEBUG
 ;
 
-(def my-form [:fc             :byte   2
-              :dur            :byte   2
-              :dst            :byte   6
-              :src            :byte   6
-              :bssid          :byte   6
-              :seq      :be   :short
-              :data           :byte   128])
+(def my-form [:fc     :byte   2
+              :dur    :byte   2
+              :dst    :byte   6
+              :src    :byte   6
+              :bssid  :byte   6
+              :seq    :short
+              :data   :byte   128])
 
 (def my-opts {:immediate true :data-link-type :ieee80211})
 
