@@ -1,6 +1,6 @@
 (ns clojure-pf.binary
   "Packet serialization and deserialization functions."
-  (:import  (java.nio ByteBuffer ByteOrder))
+  (:import (java.nio ByteBuffer ByteOrder))
   (:require [clojure-pf.form    :as     form]
             [clojure-pf.packet  :refer  :all]))
 
@@ -17,7 +17,6 @@
 (defn- deserialize-value [buffer entry]
   "Deserializes a value from a buffer according to a form entry."
   (let [kind          (:kind entry)
-        size          (:size entry)
         [buffer
          array-ctor]  (case kind
                         :byte   [buffer                   byte-array]
@@ -26,13 +25,14 @@
                         :long   [(.asLongBuffer buffer)   long-array]
                         :float  [(.asFloatBuffer buffer)  float-array]
                         :double [(.asDoubleBuffer buffer) double-array])
-        size-left     (min size (.remaining buffer))]
-    (if (pos? size-left)
-      (if (= size 1)
-        (.get buffer)
-        (let [array (array-ctor size-left)]
-          (.get buffer array)
-          array)))))
+        remaining     (.remaining buffer)]
+    (if (pos? remaining)
+      (case (form/entry->type entry)
+        :scalar (.get buffer)
+        :array  (let [size  (min (:size entry) remaining)
+                      array (array-ctor size)]
+                  (.get buffer array)
+                  array)))))
 
 (defn- deserialize-payload [buffer region entries]
   "Deserializes a packet payload according to a given region and form entries."
@@ -75,7 +75,6 @@
 (defn- serialize-value [value buffer entry]
   "Serializes a value to a buffer according to an entry."
   (let [kind      (:kind entry)
-        size      (:size entry)
         buffer    (case kind
                     :byte   buffer
                     :short  (.asShortBuffer buffer)
@@ -83,11 +82,12 @@
                     :long   (.asLongBuffer buffer)
                     :float  (.asFloatBuffer buffer)
                     :double (.asDoubleBuffer buffer))
-        size-left (min size (.remaining buffer))]
-    (if (pos? size-left)
-      (if (= size 1)
-        (.put buffer value)
-        (.put buffer value 0 size-left)))))
+        remaining (.remaining buffer)]
+    (if (pos? remaining)
+      (case (form/entry->type entry)
+        :scalar (.put buffer value)
+        :array  (let [size (min (:size entry) remaining)]
+                  (.put buffer value 0 size))))))
 
 ; Serialization exports
 
