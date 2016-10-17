@@ -14,8 +14,8 @@
         (.position index)
         (.limit (+ index size)))))
 
-(defn- deserialize-value [buffer entry]
-  "Deserializes a value from a buffer according to a form entry."
+(defn- deserialize-pair [buffer entry]
+  "Deserializes a key-value pair from a buffer according to a form entry."
   (let [kind          (:kind entry)
         [buffer
          array-ctor]  (case kind
@@ -27,48 +27,36 @@
                         :double [(.asDoubleBuffer buffer) double-array])
         remaining     (.remaining buffer)]
     (if (pos? remaining)
-      (case (form/entry->type entry)
-        :scalar (.get buffer)
-        :array  (let [size  (min (:size entry) remaining)
-                      array (array-ctor size)]
-                  (.get buffer array)
-                  array)))))
+      (let [field (:field entry)
+            value (case (form/entry->type entry)
+                    :scalar (.get buffer)
+                    :array  (let [size  (min (:size entry) remaining)
+                                  array (array-ctor size)]
+                              (.get buffer array)
+                              array))]
+        {field value}))))
 
-(defn- deserialize-payload [buffer region entries]
-  "Deserializes a packet payload according to a given region and form entries."
+(defn- deserialize-payload [buffer entries region]
+  "Deserializes a packet payload according to a form entry list and region."
   (let [buffer (regional-buffer buffer region)]
-    (loop [entries entries
-           payload {}]
-      (if (empty? entries)
-        payload
-        (let [entry (first entries)
-              value (deserialize-value buffer entry)]
-          (recur (rest entries)
-                 (assoc payload (:field entry) value)))))))
+    (->> entries
+         (map (partial deserialize-pair buffer))
+         (apply merge))))
 
 ; Deserialization exports
 
 (defn deserialize [raw-input-packet entries]
   "Deserializes one or more packets from a RawInputPacket according
   to given entries. Returns a list of destructured packets on success."
-  (let [buffer (-> raw-input-packet
-                   :data
-                   ByteBuffer/wrap
-                   .asReadOnlyBuffer)]
-    (loop [payload-regions  (:payload-regions raw-input-packet)
-           timestamps       (:timestamps raw-input-packet)
-           packets          []]
-      (if (empty? payload-regions)
-        packets
-        (let [payload-region  (first payload-regions)
-              timestamp       (first timestamps)
-              payload         (deserialize-payload buffer
-                                                   payload-region
-                                                   entries)
-              packet          (->Packet timestamp payload)]
-          (recur (rest payload-regions)
-                 (rest timestamps)
-                 (conj packets packet)))))))
+  (let [buffer          (-> (:data raw-input-packet)
+                            ByteBuffer/wrap
+                            .asReadOnlyBuffer)
+        timestamps      (:timestamps raw-input-packet)
+        payloads        (->> (:payload-regions raw-input-packet)
+                             (map (partial deserialize-payload
+                                           buffer
+                                           entries)))]
+    (map ->Packet timestamps payloads)))
 
 ; Serialization utiliies
 
