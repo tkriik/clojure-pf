@@ -1,4 +1,4 @@
-(ns clojure-pf.core.io
+(ns clojure-pf.core.native
   "Wrapper functions to native packet filter routines."
   (:require [net.n01se.clojure-jna          :as     jna]
             [clojure-pf.core.data-link-type :as     dlt]
@@ -6,6 +6,7 @@
 
 (defn open [interface
             read-buffer-size
+            write-buffer-size
             data-link-type
             header-complete
             immediate]
@@ -22,11 +23,10 @@
     (if-not (= handle -1)
       handle)))
 
-(defn read-raw [handle read-buffer-size maximum-packets]
-  "Reads at most 'read-buffer-size' bytes from a file handle,
-  containing at most 'maximum-packets' payloads.
+(defn read-raw [handle buffer maximum-packets]
+  "Reads at most 'maximum-packets' payloads to a buffer.
   Returns a RawInputPacket on success."
-  (let [data            (byte-array read-buffer-size)
+  (let [data            (.array buffer)
         seconds         (long-array maximum-packets)
         microseconds    (long-array maximum-packets)
         payload-indices (int-array maximum-packets)
@@ -48,7 +48,7 @@
             payload-regions (map ->RawPacketRegion
                                  (take payload-count payload-indices)
                                  (take payload-count payload-sizes))]
-        (->RawInputPacket data timestamps payload-regions)))))
+        (->RawInputPacket timestamps buffer payload-regions)))))
 
 (defn write-raw [handle raw-output-packet write-buffer-size]
   "Writes at most 'write-buffer-size' bytes from a RawOutputPacket
