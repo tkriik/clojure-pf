@@ -1,7 +1,6 @@
 (ns clojure-pf.core.form
   "Packet form types and parsing."
-  (:require [clojure.algo.monads :refer [with-monad domonad m-plus
-                                         state-t state-m maybe-m]]))
+  (:require [clojure.algo.monads :refer :all]))
 
 (defprotocol Form
   "Packet form methods."
@@ -58,9 +57,9 @@
   "Reads a vector from a token list."
   #(get-token % vector?))
 
-(def ^:private maybe-state-m
-  "Stateful monad transformer with a Maybe monad as base."
-  (state-t maybe-m))
+(def ^:private maybe-state-m (state-t maybe-m))
+
+(declare get-forms)
 
 (with-monad maybe-state-m
   (def ^:private get-scalar

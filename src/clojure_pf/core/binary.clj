@@ -1,96 +1,78 @@
 (ns clojure-pf.core.binary
   "Packet serialization and deserialization functions."
-  (:import (java.nio ByteBuffer ByteOrder))
-  (:require [clojure-pf.core.form    :as     form]
-            [clojure-pf.core.packet  :refer  :all]))
+  (:require [clojure-pf.core.buffer :as     buffer]
+            [clojure-pf.core.form   :refer  :all]
+            [clojure-pf.core.packet :refer  :all])
+  (:import  (java.nio ByteBuffer)
+            (clojure_pf.core.form  ScalarForm ArrayForm SubForm)))
 
 ; Deserialization utilities
 
-(defn- regional-buffer [buffer region]
-  "Returns a buffer with the position and limit set according to a region."
-  (let [index (:index region)
-        size  (:size region)]
-    (-> (.asReadOnlyBuffer buffer)
-        (.position index)
-        (.limit (+ index size)))))
+(defn- form->array [form size]
+  "Returns a Java array associated with a form."
+  (case (:kind form)
+    :byte   (byte-array size)
+    :short  (short-array size)
+    :int    (int-array size)
+    :long   (long-array size)
+    :float  (float-array size)
+    :double (double-array size)))
 
-(defn- deserialize-pair [buffer entry]
-  "Deserializes a key-value pair from a buffer according to a form entry."
-  (let [kind          (:kind entry)
-        [buffer
-         array-ctor]  (case kind
-                        :byte   [buffer                   byte-array]
-                        :short  [(.asShortBuffer buffer)  short-array]
-                        :int    [(.asIntBuffer buffer)    int-array]
-                        :long   [(.asLongBuffer buffer)   long-array]
-                        :float  [(.asFloatBuffer buffer)  float-array]
-                        :double [(.asDoubleBuffer buffer) double-array])
-        remaining     (.remaining buffer)]
-    (if (pos? remaining)
-      (let [field (:field entry)
-            value (case (form/entry->type entry)
-                    :scalar (.get buffer)
-                    :array  (let [size  (min (:size entry) remaining)
-                                  array (array-ctor size)]
-                              (.get buffer array)
-                              array))]
-        {field value}))))
+(defmulti deserialize-form class)
 
-(defn- deserialize-payload [buffer entries region]
-  "Deserializes a packet payload according to a form entry list and region."
-  (let [buffer (regional-buffer buffer region)]
-    (->> entries
-         (map (partial deserialize-pair buffer))
-         (apply merge))))
+(defmethod deserialize-form ScalarForm [form]
+  (fn [buffer]
+   (let [buffer'        (buffer/with-form buffer form)
+         quantity-left  (buffer/quantity-left buffer' form)]
+     (if (pos? quantity-left)
+       (let [value (.get buffer')]
+         (buffer/next-form buffer form)
+         value)))))
 
-; Deserialization exports
+(defmethod deserialize-form ArrayForm [form]
+  (fn [buffer]
+    (let [buffer'       (buffer/with-form buffer form)
+          quantity-left (buffer/quantity-left buffer' form)]
+      (if (pos? quantity-left)
+        (let [array (form->array form quantity-left)
+              _     (.get buffer' array)]
+          (buffer/next-form buffer form)
+          (vec array))))))
 
-(defn deserialize [raw-input-packet entries]
-  "Deserializes one or more packets from a RawInputPacket according
-  to given entries. Returns a list of destructured packets on success."
-  (let [buffer          (-> (:data raw-input-packet)
-                            ByteBuffer/wrap
-                            .asReadOnlyBuffer)
-        timestamps      (:timestamps raw-input-packet)
-        payloads        (->> (:payload-regions raw-input-packet)
-                             (map (partial deserialize-payload
-                                           buffer
-                                           entries)))]
+(declare deserialize-forms)
+
+(defmethod deserialize-form SubForm [form]
+  (fn [buffer]
+    (deserialize-forms buffer (:forms form))))
+
+(defn deserialize-forms [buffer forms]
+  "Deserializes a list of forms from a buffer."
+  (let [fields  (map :field forms)
+        values  (map #((deserialize-form %) buffer) forms)]
+    (zipmap fields values)))
+
+(defn deserialize [raw-input-packet forms]
+  "Deserializes one or more packets from a RawInputPacket
+  according to a list of forms.
+  Returns a list of destructured packets on success."
+  (let [timestamps      (:timestamps raw-input-packet)
+        buffer          (:buffer raw-input-packet)
+        payload-regions (:payload-regions raw-input-packet)
+        payload-buffers (map (partial buffer/with-region buffer)
+                             payload-regions)
+        payloads        (map deserialize-forms payload-buffers (repeat forms))]
     (map ->Packet timestamps payloads)))
 
-; Serialization utiliies
+(defn serialize [payload forms]
+  nil)
 
-(defn- serialize-value [value buffer entry]
-  "Serializes a value to a buffer according to an entry."
-  (let [kind      (:kind entry)
-        buffer    (case kind
-                    :byte   buffer
-                    :short  (.asShortBuffer buffer)
-                    :int    (.asIntBuffer buffer)
-                    :long   (.asLongBuffer buffer)
-                    :float  (.asFloatBuffer buffer)
-                    :double (.asDoubleBuffer buffer))
-        remaining (.remaining buffer)]
-    (if (pos? remaining)
-      (case (form/entry->type entry)
-        :scalar (.put buffer value)
-        :array  (let [size (min (:size entry) remaining)]
-                  (.put buffer value 0 size))))))
-
-; Serialization exports
-
-(defn serialize [packet entries]
-  "Serializes a packet payload according to a list of entries.
-  Returns a RawOutputPacket on success."
-  (let [packet-size (reduce + (map :size entries))
-        buffer      (ByteBuffer/allocate packet-size)]
-    (loop [entries entries]
-      (if-not (empty? entries)
-        (let [entry (first entries)
-              field (:field entry)
-              value (get packet field)]
-          (if (serialize-value value buffer entry)
-            (recur (rest entries))))))
-    (let [data          (.array buffer)
-          packet-region (->RawPacketRegion 0 (.position buffer))]
-      (->RawOutputPacket data packet-region))))
+;(defn to-raw [payload form]
+;  "Serializes a payload according to form.
+;  Returns a RawOutputPacket on success."
+;  (let [payload-size  (size form)
+;        buffer        (->> (ByteBuffer/allocate payload-size)
+;                           (serialize form payload))]
+;    (if buffer
+;      (let [data            (.array buffer)
+;            payload-region  (->RawPacketRegion 0 (.position buffer))]
+;        (->RawOutputPacket data payload-region)))))
