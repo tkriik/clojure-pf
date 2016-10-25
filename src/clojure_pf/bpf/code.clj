@@ -1,25 +1,26 @@
 (ns clojure-pf.bpf.code
   "BPF instruction codes and operations.")
 
-(def my-prog [:ld :abs :w
+; Utilities
 
-(def ^:private ^:const kind-table
+(def ^:private kind-table
   "Instruction kinds"
   {:ld    0x00    ; load to acc
    :ldx   0x01    ; load to idx
    :st    0x02    ; store acc
    :stx   0x03    ; store idx
    :alu   0x04    ; op between accumulator and source
+   :jmp   0x05    ; jump
    :ret   0x06    ; return
    :misc  0x07})  ; miscellaneous
 
-(def ^:private ^:const size-table
+(def ^:private size-table
   "Data size variants."
   {:w     0x00    ; word
    :h     0x08    ; halfword
    :b     0x10})  ; byte
 
-(def ^:private ^:const mode-table
+(def ^:private mode-table
   "Addressing modes."
   {:imm   0x00    ; constant
    :abs   0x20    ; data at fixed-offset
@@ -28,7 +29,7 @@
    :len   0x80    ; packet length
    :msh   0xa0})  ; IP header length
 
-(def ^:private ^:const operation-table
+(def ^:private operation-table
   "Arithmetic and jump instructions."
   {:add   0x00    ; acc <- acc + k 
    :sub   0x10    ; acc <- acc - k 
@@ -45,18 +46,18 @@
    :jge   0x30    ; jump-if-greater-or-equal
    :jset  0x40})  ; jump-if-set
 
-(def ^:private ^:const source-table
+(def ^:private source-table
   "Value modes."
   {:k     0x00    ; constant
    :x     0x08})  ; index register
 
-(def ^:private ^:const retval-table
+(def ^:private retval-table
   "Return value modes."
   {:k     0x00    ; constant
    :x     0x08    ; index register
    :a     0x10})  ; accumulator
 
-(def ^:private ^:const table
+(def ^:private table
   "All instruction constants."
   (merge kind-table
          size-table
@@ -65,27 +66,35 @@
          source-table
          retval-table))
 
-; Category checking
+(defn- compose [codes]
+  "Returns the sum of multiple BPF codes as an opcode."
+  (->> codes
+       (map (partial get table))
+       (reduce +)))
 
-(defn kind? [ins]
-  (contains? kind-table ins))
+(def ^:private opcodes
+  "Basic opcodes."
+  (map (comp compose second)
+       {:load         [:ld :imm]
+        :load-mem     [:ld :mem]
 
-(defn size? [ins]
-  (contains? size-table ins))
+        :load-8-abs   [:ld :b :abs]
+        :load-8-rel   [:ld :b :ind]
+        :load-16-abs  [:ld :h :abs]
+        :load-16-rel  [:ld :h :ind]
+        :load-32-abs  [:ld :w :abs]
+        :load-32-rel  [:ld :w :ind]
 
-(defn mode? [ins]
-  (contains? mode-table ins))
+        :store-acc    [:st]
+        :store-idx    [:stx]
 
-(defn op? [ins]
-  (contains? operation-table ins))
+        :jump-if-eq   [:jmp :jeq :k]
 
-(defn source? [ins]
-  (contains? source-table ins))
+        :return-acc   [:ret :a]
+        :return-k     [:ret :k]}))
 
-(defn retval? [ins]
-  (contains? retval-table ins))
+; Exports
 
-; Translation
-
-(defn to-code [ins]
-  (get table ins))
+(defn to-opcode [opcode]
+  "Returns the numeric value associated with a keyword denoting an opcode."
+  (get opcodes opcode))
